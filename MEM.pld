@@ -31,10 +31,10 @@ Pin [24..29] = [CODE_RD, RAM_CS, FLASH_CS, RD_OUT, RST_OUT, PERIPHERAL_CS];
 Pin [33..34, 36..40] = [WA12..18];
 
 /* Lower Address Latch */
-PinNode = [A0..7];
-[A0..7].L = [D0..7].io;
-[A0..7].LE = ALE;
-[A0..7].AR = !RST;
+PinNode = [A0..1];
+[A0..1].L = [D0..1].io;
+[A0..1].LE = ALE;
+[A0..1].AR = !RST;
 
 Field Address = [A15..0];
 
@@ -46,10 +46,10 @@ PinNode = [DATA_sel, PAGE_sel, CODE_WINDOW_sel, DATA_WINDOW_sel, PAGE_WINDOW_sel
 
 RAM_sel         = Address:'h'[0000..BFFF];
 PAGE_sel        = Address:'h'[C000..CFFF];
-CONTROL_sel     = Address:'h'FE00;
-CODE_WINDOW_sel = Address:'h'FE01;
-DATA_WINDOW_sel = Address:'h'FE02;
-PAGE_WINDOW_sel = Address:'h'FE03;
+CONTROL_sel     = Address:'b'11111110XXXXXX00;
+CODE_WINDOW_sel = Address:'b'11111110XXXXXX01;
+DATA_WINDOW_sel = Address:'b'11111110XXXXXX10;
+PAGE_WINDOW_sel = Address:'b'11111110XXXXXX11;
 PERIPHERAL_CS   = Address:'h'[FF00..FFFF];
 
 CONTROL_load = CONTROL_sel & !WR;
@@ -97,14 +97,16 @@ CODE_DELAY0.AR = !RST;
 /* selected page address */
 PinNode = [PA12..18, MEM_type];
 [PA12..18, MEM_type] = (!CODE_RD & [CODE_WINDOW0..7])
-                     # (CODE_RD & PAGE_sel & [PAGE_WINDOW0..7])
-                     # (CODE_RD & RAM_sel  & [DATA_WINDOW0..7]);
+                     # (CODE_RD & RAM_sel  & [DATA_WINDOW0..7])
+                     # (CODE_RD & PAGE_sel & [PAGE_WINDOW0..7]);
 
-/* inbound address from bus */
-PinNode = [INA12..15];
-[SA12..15] = (!CODE_RD # !PAGE_sel) & [A12..15];
+/* inbound address from bus - page short circuits adder */
+PinNode = [SA12..15];
+[SA12..15] = (!CODE_RD # RAM_sel) & [A12..15];
 
-/* adder */
+/* adder
+   note - technically, we don't need to deselect the address adder - for page window, just set the upper 4 bits of the address to 0 rather than passing [A12..15]
+   address adder is a 4 bit + 7 bit -> 7 bit (+ carry) adder (1 half adder -> 3 full adders -> 2 half adders -> half adder, drop carry bit) */
 
 PinNode = [C12..17];
 
@@ -128,14 +130,8 @@ C17 = PA17 & C16;
 
 WA18 = PA18 $ C17;
 
-
-/*[WA12..18] = [PA12..18];*/
-
 !RAM_CS = ((!RD & (RAM_sel # PAGE_sel)) # !CODE_RD) & MEM_type;
 !FLASH_CS = ((!RD & (RAM_sel # PAGE_sel)) # !CODE_RD) & !MEM_type;
-
-/* note - technically, we don't need to deselect the address adder - for page window, just set the upper 4 bits of the address to 0 rather than passing [A12..15]
-/* address adder is a 4 bit + 7 bit -> 7 bit (+ carry) adder (1 half adder -> 3 full adders -> 2 half adders -> half adder, drop carry bit)
 
 /* Data Bus Driver */
 [D0..D7].OE = !RD & (CONTROL_sel # CODE_WINDOW_sel # DATA_WINDOW_sel # PAGE_WINDOW_sel);
