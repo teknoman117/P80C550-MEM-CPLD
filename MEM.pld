@@ -1,0 +1,145 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+Name     MEM ;
+PartNo   AtmelCPLD;
+Date     7/27/2021 ;
+Revision 01 ;
+Designer Nathaniel R Lewis ;
+Company  HooDooNet ;
+Assembly None ;
+Location Willits ;
+Device   f1504plcc44 ;
+
+PROPERTY ATMEL {JTAG=OFF};
+PROPERTY ATMEL {preassign keep};
+PROPERTY ATMEL {security on};
+PROPERTY ATMEL {pin_keep off};
+
+/* Pins */
+Pin 1 = RST;
+Pin 2 = CLK;
+Pin 44 = RD;
+Pin 43 = WR;
+Pin 41 = ALE;
+Pin [4..9, 11..12] = [D0..7];
+Pin [13..14, 16..21] = [A8..15];
+/*Pin [24..29, 31..32]*/
+/* maybe PFO, INT, and PERIPHERAL_CS */
+Pin [24..29] = [CODE_RD, RAM_CS, FLASH_CS, RD_OUT, RST_OUT, PERIPHERAL_CS];
+Pin [33..34, 36..40] = [WA12..18];
+
+/* Lower Address Latch */
+PinNode = [A0..7];
+[A0..7].L = [D0..7].io;
+[A0..7].LE = ALE;
+[A0..7].AR = !RST;
+
+Field Address = [A15..0];
+
+/* CPU Reset Signal */
+RST_OUT = !RST;
+
+/* Select Signals */
+PinNode = [DATA_sel, PAGE_sel, CODE_WINDOW_sel, DATA_WINDOW_sel, PAGE_WINDOW_sel, CONTROL_sel, CONTROL_load];
+
+RAM_sel         = Address:'h'[0000..BFFF];
+PAGE_sel        = Address:'h'[C000..CFFF];
+CONTROL_sel     = Address:'h'FE00;
+CODE_WINDOW_sel = Address:'h'FE01;
+DATA_WINDOW_sel = Address:'h'FE02;
+PAGE_WINDOW_sel = Address:'h'FE03;
+PERIPHERAL_CS   = Address:'h'[FF00..FFFF];
+
+CONTROL_load = CONTROL_sel & !WR;
+
+/* Memory Windows */
+/* apply shift register */
+PinNode = [CODE_DELAY0..2];
+PinNode = [CODE_WINDOW_BUFFER0..7];
+PinNode = [CODE_WINDOW0..7];
+PinNode = [DATA_WINDOW0..7];
+PinNode = [PAGE_WINDOW0..7];
+
+/* loading code window buffer sets this register, first CODE_RD clears it */
+CODE_DELAY0.D = 'b'0;
+CODE_DELAY0.CK = CODE_RD;
+CODE_DELAY0.AP = CONTROL_load;
+CODE_DELAY0.AR = !RST;
+
+[CODE_DELAY2..1].D = [CODE_DELAY1..0];
+[CODE_DELAY2..1].CK = CODE_RD;
+[CODE_DELAY2..1].AR = !RST # CONTROL_load;
+
+[CODE_WINDOW_BUFFER0..7].D = [D0..7].io;
+[CODE_WINDOW_BUFFER0..7].CE = CODE_WINDOW_sel;
+[CODE_WINDOW_BUFFER0..7].CK = WR;
+[CODE_WINDOW_BUFFER0..7].AR = !RST;
+
+[CODE_WINDOW0..7].D = [CODE_WINDOW_BUFFER0..7];
+[CODE_WINDOW0..7].CE = CODE_DELAY2;
+[CODE_WINDOW0..7].CK = CODE_RD;
+[CODE_WINDOW0..7].AR = !RST;
+
+[DATA_WINDOW0..7].D = [D0..7].io;
+[DATA_WINDOW0..7].CE = DATA_WINDOW_sel;
+[DATA_WINDOW0..7].CK = WR;
+[DATA_WINDOW0..7].AR = !RST;
+
+[PAGE_WINDOW0..7].D = [D0..7].io;
+[PAGE_WINDOW0..7].CE = PAGE_WINDOW_sel;
+[PAGE_WINDOW0..7].CK = WR;
+[PAGE_WINDOW0..7].AR = !RST;
+
+/* Address Generator */
+
+/* selected page address */
+PinNode = [PA12..18, MEM_type];
+[PA12..18, MEM_type] = (!CODE_RD & [CODE_WINDOW0..7])
+                     # (CODE_RD & PAGE_sel & [PAGE_WINDOW0..7])
+                     # (CODE_RD & RAM_sel  & [DATA_WINDOW0..7]);
+
+/* inbound address from bus */
+PinNode = [INA12..15];
+[SA12..15] = (!CODE_RD # !PAGE_sel) & [A12..15];
+
+/* adder */
+
+PinNode = [C12..17];
+
+WA12 = PA12 $ SA12;
+C12 = PA12 & SA12;
+
+WA13 = (PA13 $ SA13) $ C12;
+C13 = ((PA13 $ SA13) & C12) # (PA13 & SA13);
+
+WA14 = (PA14 $ SA14) $ C13;
+C14 = ((PA14 $ SA14) & C13) # (PA14 & SA14);
+
+WA15 = (PA15 $ SA15) $ C14;
+C15 = ((PA15 $ SA15) & C14) # (PA15 & SA15);
+
+WA16 = PA16 $ C15;
+C16 = PA16 & C15;
+
+WA17 = PA17 $ C16;
+C17 = PA17 & C16;
+
+WA18 = PA18 $ C17;
+
+
+/*[WA12..18] = [PA12..18];*/
+
+!RAM_CS = ((!RD & (RAM_sel # PAGE_sel)) # !CODE_RD) & MEM_type;
+!FLASH_CS = ((!RD & (RAM_sel # PAGE_sel)) # !CODE_RD) & !MEM_type;
+
+/* note - technically, we don't need to deselect the address adder - for page window, just set the upper 4 bits of the address to 0 rather than passing [A12..15]
+/* address adder is a 4 bit + 7 bit -> 7 bit (+ carry) adder (1 half adder -> 3 full adders -> 2 half adders -> half adder, drop carry bit)
+
+/* Data Bus Driver */
+[D0..D7].OE = !RD & (CONTROL_sel # CODE_WINDOW_sel # DATA_WINDOW_sel # PAGE_WINDOW_sel);
+[D0..D7] = (CONTROL_sel & 'b'00000000)
+         # (CODE_WINDOW_sel & [CODE_WINDOW0..7])
+         # (DATA_WINDOW_sel & [DATA_WINDOW0..7])
+         # (PAGE_WINDOW_sel & [PAGE_WINDOW0..7]);
