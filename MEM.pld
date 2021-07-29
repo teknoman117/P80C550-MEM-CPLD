@@ -36,17 +36,16 @@ PinNode = [A0..1];
 Field Address = [A15..0];
 
 /* Select Signals */
-PinNode = [DATA_sel, PAGE_sel, CODE_WINDOW_sel, DATA_WINDOW_sel, PAGE_WINDOW_sel, CONTROL_sel, CONTROL_load];
+PinNode = [DATA_sel, PAGE_sel, CODE_WINDOW_sel, DATA_WINDOW_sel, PAGE_WINDOW_sel, CODE_load];
 
 RAM_sel         = Address:'h'[0000..BFFF];
 PAGE_sel        = Address:'h'[C000..CFFF];
-CONTROL_sel     = Address:'b'11111110XXXXXX00;
-CODE_WINDOW_sel = Address:'b'11111110XXXXXX01;
-DATA_WINDOW_sel = Address:'b'11111110XXXXXX10;
-PAGE_WINDOW_sel = Address:'b'11111110XXXXXX11;
+CODE_WINDOW_sel = Address:'b'11111110XXXXXX00;
+DATA_WINDOW_sel = Address:'b'11111110XXXXXX01;
+PAGE_WINDOW_sel = Address:'b'11111110XXXXXX10;
 PERIPHERAL_CS   = Address:'h'[FF00..FFFF];
 
-CONTROL_load = CONTROL_sel & !WR;
+CODE_load = CODE_WINDOW_sel & !WR;
 
 /* Memory Windows */
 /* apply shift register */
@@ -59,12 +58,12 @@ PinNode = [PAGE_WINDOW0..7];
 /* loading code window buffer sets this register, first CODE_RD clears it */
 CODE_DELAY0.D = 'b'0;
 CODE_DELAY0.CK = CODE_RD;
-CODE_DELAY0.AP = CONTROL_load;
+CODE_DELAY0.AP = CODE_load;
 CODE_DELAY0.AR = !RST;
 
 [CODE_DELAY2..1].D = [CODE_DELAY1..0];
 [CODE_DELAY2..1].CK = CODE_RD;
-[CODE_DELAY2..1].AR = !RST # CONTROL_load;
+[CODE_DELAY2..1].AR = !RST # CODE_load;
 
 [CODE_WINDOW_BUFFER0..7].D = [D0..7].io;
 [CODE_WINDOW_BUFFER0..7].CE = CODE_WINDOW_sel;
@@ -129,7 +128,7 @@ WA18 = PA18 $ C17;
 !RD_OUT = !CODE_RD # !RD;
 
 /* Data Bus Driver */
-[D0..D7].OE = !RD & (CONTROL_sel # CODE_WINDOW_sel # DATA_WINDOW_sel # PAGE_WINDOW_sel);
+[D0..D7].OE = !RD & (CODE_WINDOW_sel # DATA_WINDOW_sel # PAGE_WINDOW_sel);
 [D0..D7] = (CODE_WINDOW_sel & [CODE_WINDOW0..7])
          # (DATA_WINDOW_sel & [DATA_WINDOW0..7])
          # (PAGE_WINDOW_sel & [PAGE_WINDOW0..7]);
