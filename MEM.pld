@@ -18,17 +18,23 @@ PROPERTY ATMEL {security on};
 PROPERTY ATMEL {pin_keep off};
 
 /* Pins */
-Pin 1 = RST;
-Pin 2 = CLK;
+/*Pin 1 = RST;
 Pin 44 = RD;
 Pin 43 = WR;
 Pin 41 = ALE;
 Pin [4..9, 11..12] = [D0..7];
 Pin [13..14, 16..21] = [A8..15];
-/*Pin [24..29, 31..32]*/
-/* maybe PFO, INT, and PERIPHERAL_CS */
 Pin [24..29] = [CODE_RD, RAM_CS, FLASH_CS, RD_OUT, RST_OUT, PERIPHERAL_CS];
-Pin [33..34, 36..40] = [WA12..18];
+Pin [33..34, 36..40] = [WA12..18];*/
+
+Pin = RST;
+Pin = RD;
+Pin = WR;
+Pin = ALE;
+Pin [4..9, 11..12] = [D0..7];
+Pin [13..14, 16..21] = [A8..15];
+Pin = [CODE_RD, RAM_CS, FLASH_CS, RD_OUT, RST_OUT, PERIPHERAL_CS];
+Pin = [WA12..18];
 
 /* Lower Address Latch */
 PinNode = [A0..1];
