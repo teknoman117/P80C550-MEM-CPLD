@@ -87,13 +87,13 @@ CODE_DELAY0.AR = !RST;
 
 /* Address Generator */
 
-/* selected page address */
+/* select page register */
 PinNode = [PA12..18, MEM_type];
 [PA12..18, MEM_type] = (!CODE_RD & [CODE_WINDOW0..7])
                      # (CODE_RD & RAM_sel  & [DATA_WINDOW0..7])
                      # (CODE_RD & PAGE_sel & [PAGE_WINDOW0..7]);
 
-/* inbound address from bus - page short circuits adder */
+/* zero input address if using page register */
 PinNode = [SA12..15];
 [SA12..15] = (!CODE_RD # RAM_sel) & [A12..15];
 
@@ -123,6 +123,7 @@ C17 = PA17 & C16;
 
 WA18 = PA18 $ C17;
 
+/* Chip selects for RAM and Flash */
 !RAM_CS = ((RAM_sel # PAGE_sel) # !CODE_RD) & MEM_type;
 !FLASH_CS = ((RAM_sel # PAGE_sel) # !CODE_RD) & !MEM_type;
 !RD_OUT = !CODE_RD # !RD;
