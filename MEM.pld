@@ -17,24 +17,15 @@ PROPERTY ATMEL {preassign keep};
 PROPERTY ATMEL {security on};
 PROPERTY ATMEL {pin_keep off};
 
-/* Pins */
-/*Pin 1 = RST;
+Pin 1 = RST;
+Pin 2 = CODE_RD;
 Pin 44 = RD;
 Pin 43 = WR;
 Pin 41 = ALE;
-Pin [4..9, 11..12] = [D0..7];
+Pin [4..9, 11..12] = [D7..0];
 Pin [13..14, 16..21] = [A8..15];
-Pin [24..29] = [CODE_RD, RAM_CS, FLASH_CS, RD_OUT, RST_OUT, PERIPHERAL_CS];
-Pin [33..34, 36..40] = [WA12..18];*/
-
-Pin = RST;
-Pin = RD;
-Pin = WR;
-Pin = ALE;
-Pin [4..9, 11..12] = [D0..7];
-Pin [13..14, 16..21] = [A8..15];
-Pin = [CODE_RD, RAM_CS, FLASH_CS, RD_OUT, RST_OUT, PERIPHERAL_CS];
-Pin = [WA12..18];
+Pin [32, 40, 39, 38] = [PERIPHERAL_CS, RAM_CS, FLASH_CS, RD_OUT];
+Pin [24..29, 31] = [WA12..18];
 
 /* Lower Address Latch */
 PinNode = [A0..1];
@@ -43,9 +34,6 @@ PinNode = [A0..1];
 [A0..1].AR = !RST;
 
 Field Address = [A15..0];
-
-/* CPU Reset Signal */
-RST_OUT = !RST;
 
 /* Select Signals */
 PinNode = [DATA_sel, PAGE_sel, CODE_WINDOW_sel, DATA_WINDOW_sel, PAGE_WINDOW_sel, CONTROL_sel, CONTROL_load];
@@ -136,12 +124,12 @@ C17 = PA17 & C16;
 
 WA18 = PA18 $ C17;
 
-!RAM_CS = ((!RD & (RAM_sel # PAGE_sel)) # !CODE_RD) & MEM_type;
-!FLASH_CS = ((!RD & (RAM_sel # PAGE_sel)) # !CODE_RD) & !MEM_type;
+!RAM_CS = ((RAM_sel # PAGE_sel) # !CODE_RD) & MEM_type;
+!FLASH_CS = ((RAM_sel # PAGE_sel) # !CODE_RD) & !MEM_type;
+!RD_OUT = !CODE_RD # !RD;
 
 /* Data Bus Driver */
 [D0..D7].OE = !RD & (CONTROL_sel # CODE_WINDOW_sel # DATA_WINDOW_sel # PAGE_WINDOW_sel);
-[D0..D7] = (CONTROL_sel & 'b'00000000)
-         # (CODE_WINDOW_sel & [CODE_WINDOW0..7])
+[D0..D7] = (CODE_WINDOW_sel & [CODE_WINDOW0..7])
          # (DATA_WINDOW_sel & [DATA_WINDOW0..7])
          # (PAGE_WINDOW_sel & [PAGE_WINDOW0..7]);
